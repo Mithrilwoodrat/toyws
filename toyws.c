@@ -4,6 +4,7 @@
  */
 #include "toyws.h"
 
+
 void serve(int fd);
 void read_request_headers(int fd);
 void send_error(int fd, char *cause, char *errnum, char *errmsg);
@@ -16,7 +17,8 @@ int main(int argc, char* argv[])
     int listenfd, connfd, port;
     socklen_t c_len;
     struct sockaddr_in s_addr, c_addr;
-
+    pthread_t new_thread;
+    
     /* 检查参数个数是否正确 */
     if (argc != 2) {
         fprintf(stderr, "usage: %s <port>\n",argv[0]);
@@ -38,10 +40,17 @@ int main(int argc, char* argv[])
     while(1) {
         c_len = sizeof(c_addr);
         connfd = accept(listenfd, (SA*)&c_addr, &c_len);
+        if (connfd == -1) {
+            printf("Accept Error\n");
+            exit(-1);
+        }
         printf("connected from %s <%d>\n",inet_ntoa(c_addr.sin_addr),ntohs(c_addr.sin_port));
-        serve(connfd);
-        close(connfd);
+        if (pthread_create(&new_thread, NULL, serve, connfd) != 0){    
+            perror("pthread_creat"); /* thread safety */
+        }
     }
+    close(listenfd);
+    return 0;
 }
 
 void serve(int fd)
@@ -54,7 +63,7 @@ void serve(int fd)
 
     /*读取 Rquest Line 和Headers*/
     rio_readline(fd, buf, MAXLINE);
-    printf("%s", buf);
+    //printf("%s", buf);
     sscanf(buf, "%s %s %s", method, uri, version);
     if (strncasecmp(method,"GET",MAXLINE)) {
         /* get不区分大小写 */
@@ -78,7 +87,7 @@ void serve(int fd)
         }
         serve_static(fd, filename, sbuf.st_size);
     }
-    
+    close(fd);
     return;
 }
 
@@ -106,7 +115,7 @@ void read_request_headers(int fd)
 
     while(strcmp(buf,"\r\n")) {
         rio_readline(fd, buf, MAXLINE);
-        printf("%s", buf);
+        //printf("%s", buf);
     }
     return;
 }

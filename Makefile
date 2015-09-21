@@ -1,5 +1,5 @@
 CC = gcc
-CCFLAGS = -std=gnu99 -O2 -Wall -g
+CCFLAGS = -std=gnu99 -O2 -Wall -g -lpthread
 
 
 all: init toyws

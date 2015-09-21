@@ -5,13 +5,13 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/stat.h>
-#include <sys/mman.h>
 #include <string.h>
 #include <ctype.h>
 #include <sys/socket.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <pthread.h>
 #include "rio.h"
 
 typedef struct sockaddr SA;
