@@ -1,5 +1,5 @@
 CC = gcc
-CCFLAGS = -std=gnu99 -O2 -Wall -g -lpthread
+CCFLAGS = -std=gnu99 -O2 -Wall -g -pthread
 
 
 all: init toyws
@@ -7,11 +7,11 @@ all: init toyws
 init:
 	mkdir -p bin
 
-toyws: toyws.c toyws.h rio.o
+toyws: toyws.c toyws.h bin/rio
 	$(CC) $(CCFLAGS) $^ -o bin/$@
 
-rio:rio.c rio.h
-	$(CC) $(CCFLAGS) $^ -o bin/$@
+bin/rio:rio.c rio.h
+	$(CC) -shared -fPIC $(CCFLAGS) $^ -o $@
 
 clean: 
-	rm bin/toyws
+	rm bin/toyws bin/rio
