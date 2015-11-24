@@ -10,7 +10,8 @@ void read_request_headers(int fd);
 void send_error(int fd, char *cause, char *errnum, char *errmsg);
 void serve_static(int fd, char *filename, int filesise);
 int parse_uri(char *uri, char *filename, char *cgiargs);
-
+void do_get(int fd, char*uri);
+void do_head(int fd, char*uri);
 
 int main(int argc, char* argv[])
 {
@@ -18,7 +19,8 @@ int main(int argc, char* argv[])
     socklen_t c_len;
     struct sockaddr_in s_addr, c_addr;
     pthread_t new_thread;
-    
+
+
     /* 检查参数个数是否正确 */
     if (argc != 2) {
         fprintf(stderr, "usage: %s <port>\n",argv[0]);
@@ -55,22 +57,29 @@ int main(int argc, char* argv[])
 
 void serve(int fd)
 {
-    int is_static;
-    struct stat sbuf;
     char buf[MAXLINE], method[MAXLINE], uri[MAXLINE], version[MAXLINE];
-    char filename[MAXLINE], cgiargs[MAXLINE];
-    
 
     /*读取 Rquest Line 和Headers*/
     rio_readline(fd, buf, MAXLINE);
     //printf("%s", buf);
     sscanf(buf, "%s %s %s", method, uri, version);
-    if (strncasecmp(method,"GET",MAXLINE)) {
+    if (!strncasecmp(method,"GET",MAXLINE)) {
         /* get不区分大小写 */
-        send_error(fd, method, "501","Not Implemented");
+        do_get(fd, uri);
         return;
     }
+    else if (!strncasecmp(method,"HEAD",MAXLINE)) {
+        do_head(fd, uri);
+        return;
+    }
+    send_error(fd, method, "501","Not Implemented");
+}
 
+void do_get(int fd, char * uri)
+{
+    int is_static;
+    struct stat sbuf;
+    char filename[MAXLINE], cgiargs[MAXLINE];
     read_request_headers(fd); /* 读取并忽略headers */
 
     /* 从GET request 中解析 URI  */
@@ -87,6 +96,41 @@ void serve(int fd)
         }
         serve_static(fd, filename, sbuf.st_size);
     }
+    close(fd);
+    return;
+}
+
+void do_head(int fd, char *uri)
+{
+
+    struct stat sbuf;
+    char filename[MAXLINE], cgiargs[MAXLINE];
+    read_request_headers(fd); /* 读取并忽略headers */
+
+    /* 从GET request 中解析 URI  */
+    parse_uri(uri, filename, cgiargs);
+    printf("request filename: %s\n",filename);
+    if (stat(filename, &sbuf) < 0) {
+        send_error(fd, filename, "404", "Not Found");
+        return;
+    }
+
+    if (!(S_ISREG(sbuf.st_mode)) || !(S_IRUSR & sbuf.st_mode)) {
+        send_error(fd, filename, "403", "Forbidden");
+        return;
+    }
+    int filesize = sbuf.st_size;
+    char filetype[MAXLINE], buf[MAXLINE], *body;
+    /* 发送 Response headers 到客户端 */
+    get_file_type(filename, filetype);
+    sprintf(buf, "HTTP/1.0 200 OK \r\n");
+    rio_writen(fd, buf, strlen(buf));
+    sprintf(buf, "Server: toyws\r\n");
+    rio_writen(fd, buf, strlen(buf));
+    sprintf(buf, "Content-type: %s\r\n", filetype);
+    rio_writen(fd, buf, strlen(buf));
+    sprintf(buf, "Content-length: %d\r\n\r\n", filesize);
+    rio_writen(fd, buf, strlen(buf));
     close(fd);
     return;
 }
