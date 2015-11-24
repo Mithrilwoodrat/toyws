@@ -1,2 +1,6 @@
 # toyws
-toyws 是为完成 csapp 作业写的 C 语言 Http Server.
+toyws is a simple HTTP Server from csapp chapter 11.
+
+## method supported
+* GET
+* HEAD
