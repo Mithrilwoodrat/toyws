@@ -7,11 +7,11 @@ all: init toyws
 init:
 	mkdir -p bin
 
-toyws: toyws.c toyws.h bin/rio
+toyws: toyws.c toyws.h rio.h rio.c
 	$(CC) $(CCFLAGS) $^ -o bin/$@
 
-bin/rio:rio.c rio.h
-	$(CC) -shared -fPIC $(CCFLAGS) $^ -o $@
+#rio:rio.c rio.h
+#	$(CC) -shared -fPIC $(CCFLAGS) $^ -o $@
 
 clean: 
 	rm bin/toyws bin/rio
