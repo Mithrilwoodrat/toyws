@@ -20,7 +20,7 @@ int main(int argc, char* argv[])
     struct sockaddr_in s_addr, c_addr;
     pthread_t new_thread;
 
-
+    
     /* 检查参数个数是否正确 */
     if (argc != 2) {
         fprintf(stderr, "usage: %s <port>\n",argv[0]);
@@ -151,6 +151,8 @@ void send_error(int fd, char *cause, char *errnum, char *errmsg)
     sprintf(buf, "Content-length: %d\r\n\r\n", (int)strlen(body));
     rio_writen(fd, buf, strlen(buf));
     rio_writen(fd, body, strlen(body));
+    close(fd);
+    return;
 }
 
 void read_request_headers(int fd)
