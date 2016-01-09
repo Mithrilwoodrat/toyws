@@ -10,8 +10,10 @@ void read_request_headers(int fd);
 void send_error(int fd, char *cause, char *errnum, char *errmsg);
 void serve_static(int fd, char *filename, int filesise);
 int parse_uri(char *uri, char *filename, char *cgiargs);
-void do_get(int fd, char*uri);
-void do_head(int fd, char*uri);
+void do_get(int fd, char *uri);
+void do_head(int fd, char *uri);
+int read_post_data(int fd);
+void do_post(int fd, char *uri);
 
 int main(int argc, char* argv[])
 {
@@ -63,6 +65,7 @@ void serve(int fd)
     rio_readline(fd, buf, MAXLINE);
     //printf("%s", buf);
     sscanf(buf, "%s %s %s", method, uri, version);
+    printf("uri: %s\t method: %s\n",uri, method);
     if (!strncasecmp(method,"GET",MAXLINE)) {
         /* get不区分大小写 */
         do_get(fd, uri);
@@ -70,6 +73,10 @@ void serve(int fd)
     }
     else if (!strncasecmp(method,"HEAD",MAXLINE)) {
         do_head(fd, uri);
+        return;
+    }
+    else if (!strncasecmp(method,"POST",MAXLINE)) {
+        do_post(fd, uri);
         return;
     }
     send_error(fd, method, "501","Not Implemented");
@@ -107,7 +114,7 @@ void do_head(int fd, char *uri)
     char filename[MAXLINE], cgiargs[MAXLINE];
     read_request_headers(fd); /* 读取并忽略headers */
 
-    /* 从GET request 中解析 URI  */
+    /* 从HEAD request 中解析 URI  */
     parse_uri(uri, filename, cgiargs);
     printf("request filename: %s\n",filename);
     if (stat(filename, &sbuf) < 0) {
@@ -131,6 +138,76 @@ void do_head(int fd, char *uri)
     rio_writen(fd, buf, strlen(buf));
     sprintf(buf, "Content-length: %d\r\n\r\n", filesize);
     rio_writen(fd, buf, strlen(buf));
+    close(fd);
+    return;
+}
+
+int read_post_data(int fd)
+{
+    char buf[MAXLINE];
+    char key[MAXLINE], value[MAXLINE];
+    int i,split;
+    u_int64_t content_length = 0;
+
+    
+    
+    while(strcmp(buf,"\r\n")) {
+        split = -1;
+        bzero(key, sizeof(key));
+        bzero(value, sizeof(value));
+        rio_readline(fd, buf, MAXLINE);
+
+        if (!strcmp(buf,"\r\n")) {
+            break;
+        }
+        
+        for (i=0; i < strlen(buf); i++) {
+            if (buf[i] == ' '){
+                continue;    
+            }
+            else if (buf[i] == ':'){
+                split = i;
+                break;
+            }            
+        }
+        if (split) {
+            strncpy(key, buf, split);
+            strncpy(value, buf+split+1, strlen(buf) - split-1);
+            printf("Key : %s \t Value : %s \n", key, value);
+            /* Content-Type: application/x-www-form-urlencoded */
+            if (!strncasecmp(key,"Content-Type",MAXLINE)){
+                printf("Content-Type in header\n");
+            }
+            /* Content-Length */
+            else if (!strncasecmp(key,"Content-Length",MAXLINE)){
+                printf("Content-Length in header\n");
+                content_length = atol(value);
+                printf("Content-Length:%d\n");
+            }
+            
+        }
+    }
+    //rio_readline(fd, buf, MAXLINE);
+    //printf("request body: %s\n", buf);
+
+    return 1;
+}
+
+void do_post(int fd, char *uri)
+{
+    int is_static;
+    struct stat sbuf;
+    char filename[MAXLINE], cgiargs[MAXLINE];
+    
+    read_post_data(fd);
+
+    /* 从POST request 中解析 URI  */
+    is_static = parse_uri(uri, filename, cgiargs);
+    if (stat(filename, &sbuf) < 0) {
+        send_error(fd, filename, "404", "Not Found");
+        return;
+    }
+    send_error(fd, filename, "403", "Forbidden");
     close(fd);
     return;
 }

@@ -14,4 +14,4 @@ toyws: toyws.c toyws.h rio.h rio.c
 #	$(CC) -shared -fPIC $(CCFLAGS) $^ -o $@
 
 clean: 
-	rm bin/toyws bin/rio
+	rm bin/toyws
