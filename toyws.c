@@ -7,6 +7,14 @@
 
 int main(int argc, char* argv[])
 {
+    
+#ifdef DEBUG
+    printf("DEBUG MODE ON!\n");
+#endif
+
+    signal(SIGINT, signal_handler);
+    signal(SIGTERM, signal_handler);
+
     int listenfd, connfd, port;
     socklen_t c_len;
     struct sockaddr_in s_addr, c_addr;
@@ -55,7 +63,11 @@ void serve(int fd)
     rio_readline(fd, buf, MAXLINE);
     //printf("%s", buf);
     sscanf(buf, "%s %s %s", method, uri, version);
+
+#ifdef DEBUG
     printf("uri: %s\t method: %s\n",uri, method);
+#endif
+
     if (!strncasecmp(method,"GET",MAXLINE)) {
         /* get不区分大小写 */
         do_get(fd, uri);
@@ -163,15 +175,20 @@ int read_post_data(int fd)
             strncpy(key, buf, split);
             strncpy(value, buf+split+1, strlen(buf) - split-1);
             printf("Key : %s \t Value : %s \n", key, value);
+
             /* Content-Type: application/x-www-form-urlencoded */
             if (!strncasecmp(key,"Content-Type",MAXLINE)){
+#ifdef DEBUG
                 printf("Content-Type in header\n");
+#endif
             }
             /* Content-Length */
             else if (!strncasecmp(key,"Content-Length",MAXLINE)){
+#ifdef DEBUG
                 printf("Content-Length in header\n");
                 content_length = atol(value);
                 printf("Content-Length:%d\n");
+#endif
             }
             
         }
@@ -289,3 +306,17 @@ void serve_static(int fd, char *filename, int filesize)
     close(srcfd);
     rio_writen(fd, body, filesize);
 }
+
+void signal_handler(int sig) 
+{
+    if (SIGINT == sig) {
+        printf("catch SIGINT!");
+        exit(0);
+    }
+
+    if (SIGTERM == sig) {
+        printf("catch SIGTERM!");
+        exit(0);
+    }
+}
+
