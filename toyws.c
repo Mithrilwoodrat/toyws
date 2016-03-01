@@ -5,16 +5,6 @@
 #include "toyws.h"
 
 
-void serve(int fd);
-void read_request_headers(int fd);
-void send_error(int fd, char *cause, char *errnum, char *errmsg);
-void serve_static(int fd, char *filename, int filesise);
-int parse_uri(char *uri, char *filename, char *cgiargs);
-void do_get(int fd, char *uri);
-void do_head(int fd, char *uri);
-int read_post_data(int fd);
-void do_post(int fd, char *uri);
-
 int main(int argc, char* argv[])
 {
     int listenfd, connfd, port;
@@ -147,9 +137,7 @@ int read_post_data(int fd)
     char buf[MAXLINE];
     char key[MAXLINE], value[MAXLINE];
     int i,split;
-    u_int64_t content_length = 0;
-
-    
+    u_int64_t content_length = 0;    
     
     while(strcmp(buf,"\r\n")) {
         split = -1;
@@ -170,6 +158,7 @@ int read_post_data(int fd)
                 break;
             }            
         }
+        
         if (split) {
             strncpy(key, buf, split);
             strncpy(value, buf+split+1, strlen(buf) - split-1);

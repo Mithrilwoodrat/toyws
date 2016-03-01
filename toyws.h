@@ -25,4 +25,17 @@ typedef struct sockaddr SA;
 #define MAXBUF   8192  /* Max I/O buffer size */
 #define LISTENQ  1024  /* Second argument to listen() */
 
+
+void serve(int fd);
+void read_request_headers(int fd);
+void send_error(int fd, char *cause, char *errnum, char *errmsg);
+void serve_static(int fd, char *filename, int filesise);
+int parse_uri(char *uri, char *filename, char *cgiargs);
+void do_get(int fd, char *uri);
+void do_head(int fd, char *uri);
+int read_post_data(int fd);
+void do_post(int fd, char *uri);
+
+#define DEBUG 1 /* is debug mode open */
+
 #endif
