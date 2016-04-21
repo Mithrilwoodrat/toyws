@@ -2,16 +2,16 @@ CC = gcc
 CCFLAGS = -std=gnu99 -O2 -Wall -g -pthread
 
 
-all: init rio toyws
+all: init toyws
 
 init:
 	mkdir -p bin
 
-toyws: toyws.c toyws.h bin/rio
+toyws: src/*
 	$(CC) $(CCFLAGS) $^ -o bin/$@
 
-rio:rio.c rio.h
-	$(CC) -shared -fPIC $(CCFLAGS) $^ -o bin/$@
+#rio:src/rio.c src/rio.h
+#	$(CC) -shared -fPIC $(CCFLAGS) $^ -o bin/$@
 
 run: bin/toyws
 	bin/toyws 8888
