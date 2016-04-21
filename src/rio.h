@@ -1,6 +1,8 @@
 #ifndef RIO_H
 #define RIO_H
 #include <unistd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 #include <stdlib.h>
 #include <errno.h>
 

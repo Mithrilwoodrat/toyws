@@ -36,8 +36,9 @@ void do_get(int fd, char *uri);
 void do_head(int fd, char *uri);
 int read_post_data(int fd);
 void do_post(int fd, char *uri);
-
+void get_file_type(char *filename, char *filetype);
 void signal_handler(int sig);
+
 #define DEBUG 1 /* is debug mode open */
 
 #endif
