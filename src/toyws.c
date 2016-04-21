@@ -10,7 +10,7 @@ int main(int argc, char* argv[])
     
 #ifdef DEBUG
     printf("DEBUG MODE ON!\n");
-    printf("listening at path: %s\n", argv[0]);
+    call_realpath(argv[0]);
 #endif
 
     signal(SIGINT, signal_handler);

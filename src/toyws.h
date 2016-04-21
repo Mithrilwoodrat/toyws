@@ -41,4 +41,19 @@ void signal_handler(int sig);
 
 #define DEBUG 1 /* is debug mode open */
 
+#ifdef DEBUG
+#include <sys/param.h>
+static void
+call_realpath (char * path)
+{
+    char resolved_path[PATH_MAX];
+
+    if (realpath (path, resolved_path) == 0) { 
+        fprintf (stderr, "realpath failed: %s\n", strerror (errno));
+    } else {
+        printf ("Program's full path is '%s'\n", resolved_path);
+    }
+}
+#endif
+
 #endif
