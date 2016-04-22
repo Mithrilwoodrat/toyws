@@ -16,11 +16,8 @@ int main(int argc, char* argv[])
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
 
-    int listenfd, connfd, port;
-    socklen_t c_len;
-    struct sockaddr_in s_addr, c_addr;
-    pthread_t new_thread;
-
+    int listenfd,  port;
+    struct sockaddr_in s_addr;
     
     /* 检查参数个数是否正确 */
     if (argc != 2) {
@@ -39,50 +36,93 @@ int main(int argc, char* argv[])
     
     listen(listenfd, 3);
 
-    /*run forever,不返回*/
-    while(1) {
-        c_len = sizeof(c_addr);
-        connfd = accept(listenfd, (SA*)&c_addr, &c_len);
-        if (connfd == -1) {
-            printf("Accept Error\n");
-            exit(-1);
-        }
-        printf("connected from %s <%d>\n",inet_ntoa(c_addr.sin_addr),ntohs(c_addr.sin_port));
-        if (pthread_create(&new_thread, NULL, serve, connfd) != 0){    
-            perror("pthread_creat"); /* thread safety */
-        }
-    }
+    /* init libev */
+    struct ev_loop *loop = ev_default_loop(0);
+    struct ev_io w_accept;
+    ev_io_init(&w_accept, on_request, listenfd, EV_READ);
+    ev_io_start(loop, &w_accept);
+    // loop forever
+    ev_loop(loop, 0);
+    
     close(listenfd);
     return 0;
 }
 
-void serve(int fd)
+void on_request(struct ev_loop *loop, struct ev_io *watcher, int revents) 
 {
-    char buf[MAXLINE], method[MAXLINE], uri[MAXLINE], version[MAXLINE];
+    int connfd;
+    socklen_t c_len;
+    struct sockaddr_in c_addr;
+    struct ev_io *w_client = (struct ev_io *) malloc(sizeof(struct ev_io));
+    
+    int listenfd = watcher->fd;
+    
+    c_len = sizeof(c_addr);
+    connfd = accept(listenfd, (SA*)&c_addr, &c_len);
+    
+    if (connfd == -1) {
+        perror("Accept Error\n");
+        return;
+    }
+    
+    if(EV_ERROR & revents)
+    {
+        perror("got invalid event in on_accept");
+        return;
+    }
+    
+    printf("connected from %s <%d>\n",inet_ntoa(c_addr.sin_addr),ntohs(c_addr.sin_port));
+    ev_io_init(w_client, on_read, connfd, EV_READ);
+    ev_io_start(loop, w_client);
+}
 
+void on_read(struct ev_loop *loop, struct ev_io *watcher, int revents) 
+{
+    struct ev_io *w_request = (struct ev_io *) malloc(sizeof(struct ev_io));
+    int fd = watcher-> fd;
+    char buf[MAXLINE];
+    Request request;
+    
     /*读取 Rquest Line 和Headers*/
     rio_readline(fd, buf, MAXLINE);
+    
+    RequestLine *request_line = &(request.request_line);
     //printf("%s", buf);
-    sscanf(buf, "%s %s %s", method, uri, version);
+    sscanf(buf, "%s %s %s\n", request_line->method, request_line->uri, request_line->version);
 
 #ifdef DEBUG
-    printf("uri: %s\t method: %s\n",uri, method);
+    printf("uri: %s\t method: %s\n", request_line->uri, request_line->method);
 #endif
+    ev_io_stop(loop, watcher);
+    ev_io_init(&request.io, on_write, fd, EV_WRITE);
+    ev_io_start(loop, &request.io);
+}
 
+void on_write(struct ev_loop *loop, struct ev_io *watcher, int revents) 
+{
+    Request *request = (Request *)watcher;
+    RequestLine *request_line = &(request->request_line);
+    int fd = watcher->fd;
+    char *method = request_line->method;
+    char *uri = request_line->uri;
     if (!strncasecmp(method,"GET",MAXLINE)) {
         /* get不区分大小写 */
         do_get(fd, uri);
+        ev_io_stop(loop, watcher);
         return;
     }
     else if (!strncasecmp(method,"HEAD",MAXLINE)) {
         do_head(fd, uri);
+        ev_io_stop(loop, watcher);
         return;
     }
     else if (!strncasecmp(method,"POST",MAXLINE)) {
         do_post(fd, uri);
+        ev_io_stop(loop, watcher);
         return;
     }
     send_error(fd, method, "501","Not Implemented");
+    ev_io_stop(loop, watcher);
 }
 
 void do_get(int fd, char * uri)
@@ -90,7 +130,7 @@ void do_get(int fd, char * uri)
     int is_static;
     struct stat sbuf;
     char filename[MAXLINE], cgiargs[MAXLINE];
-    read_request_headers(fd); /* 读取并忽略headers */
+    //read_request_headers(fd); /* 读取并忽略headers */
 
     /* 从GET request 中解析 URI  */
     is_static = parse_uri(uri, filename, cgiargs);
@@ -112,10 +152,9 @@ void do_get(int fd, char * uri)
 
 void do_head(int fd, char *uri)
 {
-
     struct stat sbuf;
     char filename[MAXLINE], cgiargs[MAXLINE];
-    read_request_headers(fd); /* 读取并忽略headers */
+    //read_request_headers(fd); /* 读取并忽略headers */
 
     /* 从HEAD request 中解析 URI  */
     parse_uri(uri, filename, cgiargs);

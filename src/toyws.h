@@ -11,10 +11,11 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <pthread.h>
 #include <signal.h>
 #include "rio.h"
+#include "request.h"
 
+#include <ev.h>
 typedef struct sockaddr SA;
 
 
@@ -26,6 +27,9 @@ typedef struct sockaddr SA;
 #define MAXBUF   8192  /* Max I/O buffer size */
 #define LISTENQ  1024  /* Second argument to listen() */
 
+void on_request(struct ev_loop *loop, struct ev_io *watcher, int revents);
+void on_read(struct ev_loop *loop, struct ev_io *watcher, int revents);
+void on_write(struct ev_loop *loop, struct ev_io *watcher, int revents);
 
 void serve(int fd);
 void read_request_headers(int fd);
@@ -52,6 +56,14 @@ call_realpath (char * path)
         fprintf (stderr, "realpath failed: %s\n", strerror (errno));
     } else {
         printf ("Program's full path is '%s'\n", resolved_path);
+    }
+}
+
+void set_unblock(int fd) {
+    int flags = fcntl(fd, F_GETFL, 0);
+    if(fcntl(fd, F_SETFL, (flags < 0 ? 0 : flags) | O_NONBLOCK) == -1) {
+        perror("Could not set nonblock");
+        return;
     }
 }
 #endif
