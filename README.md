@@ -6,3 +6,6 @@ using libev now.
 * GET
 * HEAD
 * POST (readonly)
+
+## wsgi
+* GET Only (hard coded application name)
