@@ -1,6 +1,5 @@
 # toyws
-toyws is a simple HTTP Server from csapp chapter 11.
-using libev now.
+参考 bjoern 添加了 libev 和 wsgi 的支持.
 
 ## method supported
 * GET
