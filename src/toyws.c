@@ -13,6 +13,11 @@ int main(int argc, char* argv[])
     call_realpath(argv[0]);
 #endif
 
+#ifdef WSGI
+    setenv("PYTHONPATH",".",1);
+    Py_Initialize();
+#endif
+
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
 
@@ -43,7 +48,9 @@ int main(int argc, char* argv[])
     ev_io_start(loop, &w_accept);
     // loop forever
     ev_loop(loop, 0);
-    
+#ifdef WSGI
+    Py_Finalize();
+#endif
     close(listenfd);
     return 0;
 }
@@ -134,17 +141,19 @@ void do_get(int fd, char * uri)
 
     /* 从GET request 中解析 URI  */
     is_static = parse_uri(uri, filename, cgiargs);
-    printf("request filename: %s\n",filename);
-    if (stat(filename, &sbuf) < 0) {
-        send_error(fd, filename, "404", "Not Found");
-        return;
-    }
     if (is_static) {
+        printf("request filename: %s\n",filename);
+        if (stat(filename, &sbuf) < 0) {
+            send_error(fd, filename, "404", "Not Found");
+            return;
+        }
         if (!(S_ISREG(sbuf.st_mode)) || !(S_IRUSR & sbuf.st_mode)) {
             send_error(fd, filename, "403", "Forbidden");
             return;
         }
         serve_static(fd, filename, sbuf.st_size);
+    } else {
+        serve_wsgi(fd, uri);
     }
     close(fd);
     return;
@@ -345,6 +354,32 @@ void serve_static(int fd, char *filename, int filesize)
     }    
     close(srcfd);
     rio_writen(fd, body, filesize);
+}
+
+void serve_wsgi(int fd, char *uri) 
+{
+    char buf[MAXLINE], body[MAXLINE];
+    int len;
+    printf("serving wsgi!\n");
+    Response response;
+    call_app(&response, &body, &len);
+    
+    if (response.status != NULL) {
+        printf("%s\n", PyString_AsString(response.status));
+    } else {
+        printf("response->status is NULL");
+        return;
+    }
+    sprintf(buf, "HTTP/1.0 %s \r\n", PyString_AsString(response.status));
+    rio_writen(fd, buf, strlen(buf));
+    sprintf(buf, "Server: toyws\r\n");
+    rio_writen(fd, buf, strlen(buf));
+    sprintf(buf, "Content-type: text/html\r\n");
+    rio_writen(fd, buf, strlen(buf));
+    sprintf(buf, "Content-length: %d\r\n\r\n", len);
+    rio_writen(fd, buf, strlen(buf));
+
+    rio_writen(fd, body, len);
 }
 
 void signal_handler(int sig) 

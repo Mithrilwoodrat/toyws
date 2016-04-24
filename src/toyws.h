@@ -1,6 +1,7 @@
 #ifndef TOYWS_H
 #define TOYWS_H
 
+#include <python2.7/Python.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -35,6 +36,7 @@ void serve(int fd);
 void read_request_headers(int fd);
 void send_error(int fd, char *cause, char *errnum, char *errmsg);
 void serve_static(int fd, char *filename, int filesise);
+void serve_wsgi(int fd, char *uri);
 int parse_uri(char *uri, char *filename, char *cgiargs);
 void do_get(int fd, char *uri);
 void do_head(int fd, char *uri);
@@ -59,7 +61,8 @@ call_realpath (char * path)
     }
 }
 
-void set_unblock(int fd) {
+static void
+set_unblock(int fd) {
     int flags = fcntl(fd, F_GETFL, 0);
     if(fcntl(fd, F_SETFL, (flags < 0 ? 0 : flags) | O_NONBLOCK) == -1) {
         perror("Could not set nonblock");
@@ -67,5 +70,17 @@ void set_unblock(int fd) {
     }
 }
 #endif
+
+#define WSGI 1
+
+typedef struct
+{
+    PyObject* status; /* string */
+    PyObject* headers; /* list */
+    PyObject* body; /* string */
+} Response;
+
+static char *py_app = "app";
+static char *py_module = "app";
 
 #endif

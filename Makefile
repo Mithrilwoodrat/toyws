@@ -1,6 +1,7 @@
 CC = gcc
-CCFLAGS = -std=gnu99 -O2 -Wall -g -lev -pthread
 
+CCFLAGS = -std=gnu99 -O2 -Wall -g -lev -lm
+LIBPYTHON=	/usr/lib/libpython2.7.so
 
 all: init toyws
 
@@ -8,7 +9,7 @@ init:
 	mkdir -p bin
 
 toyws: src/*
-	$(CC) $(CCFLAGS) $^ -o bin/$@.bin
+	$(CC) $(CCFLAGS) $(LIBPYTHON) $^ -o bin/$@.bin
 
 #rio:src/rio.c src/rio.h
 #	$(CC) -shared -fPIC $(CCFLAGS) $^ -o bin/$@
