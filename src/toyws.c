@@ -348,12 +348,14 @@ void serve_static(int fd, char *filename, int filesize)
     srcfd = open(filename, 'r');
 
     body = (char *)malloc(filesize);
+    memset(body, filesize, 0);
     /* 读取文件内容到body */
     while (rio_readline(srcfd, buf, MAXLINE)) {
         sprintf(body, "%s%s",body, buf);
     }    
     close(srcfd);
     rio_writen(fd, body, filesize);
+    free(body);
 }
 
 void serve_wsgi(int fd, char *uri) 
